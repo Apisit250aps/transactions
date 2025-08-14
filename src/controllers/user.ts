@@ -1,4 +1,6 @@
+import { signToken } from '@/libs/jwt'
 import { users, UserSchema, wallets, WalletSchema } from '@/models'
+import argon2 from 'argon2'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function CreateUser(
@@ -28,6 +30,17 @@ export async function CreateUser(
       )
     }
 
+    const unique = await users.findOne({ name: userParsed.data.name })
+    if (unique) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Name already exists',
+        },
+        { status: 409 }
+      )
+    }
+
     await Promise.all([
       users.insertOne(userParsed.data),
       wallets.insertOne(walletParsed.data),
@@ -39,6 +52,60 @@ export async function CreateUser(
         status: 201,
       }
     )
+  } catch (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: 'Server error!',
+        error: error,
+      },
+      {
+        status: 500,
+      }
+    )
+  }
+}
+
+export async function UserLogin(
+  req: NextRequest
+): Promise<NextResponse<ApiResponse<Token>>> {
+  try {
+    const { name, password } = await req.json()
+    if (!name || !password) {
+      return NextResponse.json(
+        { success: false, message: 'Missing credentials' },
+        { status: 400 }
+      )
+    }
+    const user = await users.findOne({ name })
+
+    if (!user) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'user not found',
+        },
+        { status: 404 }
+      )
+    }
+
+    const isValid = await argon2.verify(user.password, password)
+    if (!isValid) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid credentials' },
+        { status: 401 }
+      )
+    }
+
+    const token = signToken({ sub: user.uuid, name: user.name })
+
+    return NextResponse.json({
+      success: true,
+      message: 'login successfully!',
+      data: {
+        access: token,
+      },
+    })
   } catch (error) {
     return NextResponse.json(
       {

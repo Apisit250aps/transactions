@@ -37,6 +37,17 @@ export const TransactionSchema = z.object({
   createdAt: z.coerce.date().default(() => new Date()),
   updatedAt: z.coerce.date().default(() => new Date()),
 })
+
+
+export const UpdateTransactionSchema = z.object({
+  name: z.string().min(1, 'Name is required').optional(),
+  desc: z.string().optional(),
+  amount: z.number().min(0, 'Amount must be non-negative').optional(),
+  type: z.union([z.literal(-1), z.literal(1)]).optional(),
+  date: z.coerce.date().optional(),
+  updatedAt: z.coerce.date().default(() => new Date()),
+})
+
 // model types
 export type User = z.infer<typeof UserSchema>
 export type Wallet = z.infer<typeof WalletSchema>

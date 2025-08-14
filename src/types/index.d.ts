@@ -4,3 +4,7 @@ type ApiResponse<T = unknown> = {
   data?: T
   error?: unknown
 }
+
+type Token = {
+  access: string
+}
