@@ -7,8 +7,7 @@ import {
   UpdateTransactionSchema,
 } from '@/models'
 import { NextRequest, NextResponse } from 'next/server'
-
-type QueryId = { id: string }
+import { promise } from 'zod';
 
 // CREATE - สร้าง transaction ใหม่
 export async function CreateTransaction(
@@ -308,7 +307,7 @@ export async function UpdateTransaction(
 // DELETE - ลบ transaction
 export async function DeleteTransaction(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<ApiResponse<null>>> {
   try {
     const auth = await getAuth(req)
@@ -334,9 +333,9 @@ export async function DeleteTransaction(
         { status: 404 }
       )
     }
-
+    const id = (await params).id
     const existingTransaction = await transactions.findOne({
-      uuid: params.id,
+      uuid: id,
       wallet: wallet.uuid,
     })
 
@@ -351,7 +350,7 @@ export async function DeleteTransaction(
     }
 
     await transactions.deleteOne({
-      uuid: params.id,
+      uuid: id,
       wallet: wallet.uuid,
     })
 
