@@ -7,7 +7,6 @@ import {
   UpdateTransactionSchema,
 } from '@/models'
 import { NextRequest, NextResponse } from 'next/server'
-import { promise } from 'zod';
 
 // CREATE - สร้าง transaction ใหม่
 export async function CreateTransaction(
