@@ -74,7 +74,6 @@ Authorization: Bearer <your_jwt_token>
 ```json
 {
   "name": "username",
-  "email":"test@mail.com",
   "password": "password123"
 }
 ```
