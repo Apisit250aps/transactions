@@ -852,7 +852,16 @@ curl -X POST http://localhost:3000/api/transaction \
             </section>
 
             <footer className="pt-8 text-xs opacity-60">
-              © {new Date().getFullYear()} Transactions API Docs • Single-page
+              © {new Date().getFullYear()}{' '}
+              <a
+                href="https://github.com/Apisit250aps/transactions.git"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Transactions API Docs • 
+              </a>
+              <a href="https://github.com/Apisit250aps" target="_blank" rel="noopener noreferrer"> Apisit Saithong</a>
+              <a href="https://github.com/Apisit250aps/SavingQuests.git" target="_blank" rel="noopener noreferrer"> • Saving Quest</a>
             </footer>
           </main>
         </div>
