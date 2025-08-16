@@ -802,15 +802,36 @@ class AuthMiddleware extends GetMiddleware {
 ### เพิ่ม Refresh Token
 
 ```dart
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 class JwtStorage {
-  static const String _refreshTokenKey = 'refresh_token';
-  
-  static Future<void> saveRefreshToken(String refreshToken) async {
-    await _storage.write(key: _refreshTokenKey, value: refreshToken);
+  static const _storage = FlutterSecureStorage();
+  static const String _tokenKey = 'jwt_token';
+
+  static Future<void> saveToken(String token) async {
+    try {
+      await _storage.write(key: _tokenKey, value: token);
+    } catch (e) {
+      print('Error saving token: $e');
+      // Handle error (e.g., use alternative storage method)
+    }
   }
-  
-  static Future<String?> getRefreshToken() async {
-    return await _storage.read(key: _refreshTokenKey);
+
+  static Future<String?> getToken() async {
+    try {
+      return await _storage.read(key: _tokenKey);
+    } catch (e) {
+      print('Error reading token: $e');
+      return null;
+    }
+  }
+
+  static Future<void> deleteToken() async {
+    try {
+      await _storage.delete(key: _tokenKey);
+    } catch (e) {
+      print('Error deleting token: $e');
+    }
   }
 }
 ```
@@ -819,17 +840,88 @@ class JwtStorage {
 
 ```dart
 class ApiService extends GetxController {
-  final RxBool isLoading = false.obs;
-  
-  Future<http.Response> get(String endpoint) async {
-    isLoading.value = true;
+  String get version => "1.2.0";
+
+  Future<http.Response> _handleResponse(
+      Future<http.Response> Function() apiCall) async {
     try {
-      final response = await _handleResponse(() async {
-        // API call logic
-      });
+      final response = await apiCall();
+      if (response.statusCode == 403) {
+        await logout();
+        throw Exception('Token expired. User logged out.');
+      }
       return response;
-    } finally {
-      isLoading.value = false;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<http.Response> get(String endpoint) async {
+    return _handleResponse(() async {
+      final token = await JwtStorage.getToken();
+      return await http.get(
+        Uri.parse(endpoint),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'app_version': version,
+        },
+      );
+    });
+  }
+
+  Future<http.Response> post(String endpoint, dynamic data) async {
+    return _handleResponse(() async {
+      final token = await JwtStorage.getToken();
+      return await http.post(
+        Uri.parse(endpoint),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'app_version': version,
+        },
+        body: json.encode(data),
+      );
+    });
+  }
+
+  Future<http.Response> delete(String endpoint) async {
+    return _handleResponse(() async {
+      final token = await JwtStorage.getToken();
+      return await http.delete(
+        Uri.parse(endpoint),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'app_version': version,
+        },
+      );
+    });
+  }
+
+  Future<http.Response> put(String endpoint, dynamic data) async {
+    return _handleResponse(() async {
+      final token = await JwtStorage.getToken();
+      return await http.put(
+        Uri.parse(endpoint),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'app_version': version,
+        },
+        body: json.encode(data),
+      );
+    });
+  }
+
+  Future<bool> logout() async {
+    try {
+      await JwtStorage.deleteToken();
+      Get.offAllNamed('/login');
+      return true;
+    } catch (e) {
+      print('Error during logout: $e');
+      return false;
     }
   }
 }
