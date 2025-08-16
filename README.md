@@ -540,3 +540,303 @@ curl -X POST http://localhost:3000/api/transaction \
 4. **วันที่**: ระบบจะเรียงธุรกรรมตามวันที่สร้างใหม่สุดขึ้นก่อน
 5. **ประเภทธุรกรรม**: ใช้ -1 สำหรับรายจ่าย และ 1 สำหรับรายรับ
 6. **Environment**: ในโหมด development จะแสดงรายละเอียด error เพิ่มเติม
+
+
+# การจัดการ JWT Token ใน Flutter แอปพลิเคชัน
+
+## ภาพรวม
+
+เอกสารนี้อธิบายการใช้งานระบบจัดการ JWT (JSON Web Token) ใน Flutter แอปพลิเคชันที่ประกอบด้วย 2 ส่วนหลัก:
+1. **JwtStorage** - คลาสสำหรับจัดเก็บ Token อย่างปลอดภัย
+2. **ApiService** - คลาสสำหรับจัดการการเรียก API พร้อม Authentication
+
+## การติดตั้ง Dependencies
+
+เพิ่ม packages ต่อไปนี้ใน `pubspec.yaml`:
+
+```yaml
+dependencies:
+  flutter_secure_storage: ^9.0.0
+  get: ^4.6.6
+  http: ^1.1.0
+```
+
+จากนั้นรันคำสั่ง:
+```bash
+flutter pub get
+```
+
+## JwtStorage Class - การจัดเก็บ Token อย่างปลอดภัย
+
+### ความปลอดภัยของ Flutter Secure Storage
+
+`flutter_secure_storage` เป็นแพ็กเกจที่ให้ความปลอดภัยสูงในการเก็บข้อมูลสำคัญ:
+
+- **Android**: ใช้ Android Keystore เก็บข้อมูลแบบเข้ารหัส
+- **iOS**: ใช้ iOS Keychain ที่มีระบบรักษาความปลอดภัยในระดับระบบปฏิบัติการ
+- **ข้อมูลจะไม่หายไปแม้แอปถูกปิด** และปลอดภัยกว่าการใช้ SharedPreferences
+
+### วิธีการใช้งาน JwtStorage
+
+#### 1. บันทึก Token
+```dart
+// บันทึก JWT Token หลังจาก Login สำเร็จ
+await JwtStorage.saveToken('your_jwt_token_here');
+```
+
+#### 2. ดึง Token มาใช้งาน
+```dart
+// ดึง Token เพื่อใช้ในการเรียก API
+String? token = await JwtStorage.getToken();
+if (token != null) {
+  // มี Token สามารถใช้งานได้
+  print('Token: $token');
+} else {
+  // ไม่มี Token หรือเกิดข้อผิดพลาด
+  print('No token available');
+}
+```
+
+#### 3. ลบ Token (Logout)
+```dart
+// ลบ Token เมื่อผู้ใช้ Logout
+await JwtStorage.deleteToken();
+```
+
+### การจัดการข้อผิดพลาด
+
+คลาส JwtStorage มีการจัดการข้อผิดพลาดแบบ Try-Catch:
+
+- **saveToken()**: หากบันทึกไม่ได้จะพิมพ์ Error และสามารถเพิ่มการจัดการทางเลือกได้
+- **getToken()**: หากอ่านไม่ได้จะส่งคืน `null`
+- **deleteToken()**: หากลบไม่ได้จะพิมพ์ Error แต่ไม่หยุดการทำงาน
+
+## ApiService Class - การจัดการ API Calls
+
+### คุณสมบัติหลัก
+
+1. **Auto Token Management**: ดึง Token จาก JwtStorage โดยอัตโนมัติ
+2. **Token Expiration Handling**: ตรวจสอบ Status Code 403 และทำ Logout อัตโนมัติ
+3. **Version Control**: ส่ง App Version ใน Header ทุกครั้ง
+4. **GetX Integration**: ใช้ GetX สำหรับ Navigation และ State Management
+
+### HTTP Methods ที่รองรับ
+
+#### 1. GET Request
+```dart
+ApiService apiService = Get.find<ApiService>();
+
+try {
+  final response = await apiService.get('https://api.example.com/users');
+  if (response.statusCode == 200) {
+    final data = json.decode(response.body);
+    // ประมวลผลข้อมูล
+  }
+} catch (e) {
+  print('Error: $e');
+}
+```
+
+#### 2. POST Request
+```dart
+final userData = {
+  'name': 'John Doe',
+  'email': 'john@example.com'
+};
+
+try {
+  final response = await apiService.post(
+    'https://api.example.com/users',
+    userData
+  );
+  if (response.statusCode == 201) {
+    print('User created successfully');
+  }
+} catch (e) {
+  print('Error: $e');
+}
+```
+
+#### 3. PUT Request
+```dart
+final updateData = {
+  'name': 'John Smith',
+  'email': 'johnsmith@example.com'
+};
+
+try {
+  final response = await apiService.put(
+    'https://api.example.com/users/123',
+    updateData
+  );
+  if (response.statusCode == 200) {
+    print('User updated successfully');
+  }
+} catch (e) {
+  print('Error: $e');
+}
+```
+
+#### 4. DELETE Request
+```dart
+try {
+  final response = await apiService.delete('https://api.example.com/users/123');
+  if (response.statusCode == 200) {
+    print('User deleted successfully');
+  }
+} catch (e) {
+  print('Error: $e');
+}
+```
+
+### การจัดการ Token หมดอายุ
+
+เมื่อ Server ส่ง Status Code 403 (Forbidden):
+
+1. ระบบจะเรียก `logout()` อัตโนมัติ
+2. ลบ Token ออกจาก Secure Storage
+3. นำผู้ใช้กลับไปหน้า Login (`/login`)
+4. โยน Exception พร้อมข้อความ "Token expired. User logged out."
+
+### Headers ที่ส่งไปทุก Request
+
+```json
+{
+  "Authorization": "Bearer YOUR_JWT_TOKEN",
+  "Content-Type": "application/json",
+  "app_version": "1.2.0"
+}
+```
+
+## การตั้งค่าเริ่มต้น
+
+### 1. เพิ่ม ApiService ใน GetX Bindings
+
+```dart
+class InitialBinding extends Bindings {
+  @override
+  void dependencies() {
+    Get.put<ApiService>(ApiService());
+  }
+}
+```
+
+### 2. กำหนด Route สำหรับ Login
+
+ใน `main.dart`:
+
+```dart
+GetMaterialApp(
+  initialBinding: InitialBinding(),
+  getPages: [
+    GetPage(name: '/login', page: () => LoginPage()),
+    GetPage(name: '/home', page: () => HomePage()),
+    // Routes อื่นๆ
+  ],
+  initialRoute: '/login',
+)
+```
+
+## ตัวอย่างการใช้งานจริง
+
+### Login Flow
+
+```dart
+class LoginController extends GetxController {
+  final ApiService _apiService = Get.find<ApiService>();
+
+  Future<void> login(String email, String password) async {
+    try {
+      // เรียก Login API (ไม่ต้องใช้ Token)
+      final response = await http.post(
+        Uri.parse('https://api.example.com/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'email': email,
+          'password': password,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final token = data['token'];
+        
+        // บันทึก Token
+        await JwtStorage.saveToken(token);
+        
+        // นำไปหน้าหลัก
+        Get.offAllNamed('/home');
+      }
+    } catch (e) {
+      print('Login error: $e');
+    }
+  }
+}
+```
+
+### ตรวจสอบ Authentication Status
+
+```dart
+class AuthMiddleware extends GetMiddleware {
+  @override
+  RouteSettings? redirect(String? route) async {
+    final token = await JwtStorage.getToken();
+    if (token == null) {
+      return const RouteSettings(name: '/login');
+    }
+    return null;
+  }
+}
+```
+
+## ข้อควรระวัง
+
+1. **ความปลอดภัย**: JWT Token เก็บข้อมูลสำคัญ ใช้ Secure Storage เท่านั้น
+2. **Token Expiration**: ตั้งเวลาหมดอายุที่เหมาะสม (แนะนำ 1-24 ชั่วโมง)
+3. **Error Handling**: จัดการข้อผิดพลาดทุกระดับเพื่อประสบการณ์ผู้ใช้ที่ดี
+4. **Network Security**: ใช้ HTTPS เสมอในการส่ง Token
+5. **Logout**: ให้ผู้ใช้สามารถ Logout ได้ทุกเวลา
+
+## การปรับแต่งเพิ่มเติม
+
+### เพิ่ม Refresh Token
+
+```dart
+class JwtStorage {
+  static const String _refreshTokenKey = 'refresh_token';
+  
+  static Future<void> saveRefreshToken(String refreshToken) async {
+    await _storage.write(key: _refreshTokenKey, value: refreshToken);
+  }
+  
+  static Future<String?> getRefreshToken() async {
+    return await _storage.read(key: _refreshTokenKey);
+  }
+}
+```
+
+### เพิ่ม Loading State
+
+```dart
+class ApiService extends GetxController {
+  final RxBool isLoading = false.obs;
+  
+  Future<http.Response> get(String endpoint) async {
+    isLoading.value = true;
+    try {
+      final response = await _handleResponse(() async {
+        // API call logic
+      });
+      return response;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+}
+```
+
+## สรุป
+
+ระบบ JWT Token Management นี้ให้ความปลอดภัยและความสะดวกในการจัดการ Authentication ใน Flutter แอป ด้วยการใช้ Secure Storage สำหรับเก็บ Token และการจัดการ API calls ที่มีการตรวจสอบ Token หมดอายุอัตโนมัติ ทำให้นักพัฒนาสามารถมั่นใจได้ในความปลอดภัยของข้อมูลผู้ใช้
+
+
