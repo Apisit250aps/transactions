@@ -234,6 +234,8 @@ export default function ApiDocsPage() {
                     lang="json"
                     code={`{
   "name": "username",
+  "first_name":"John",
+  "last_name":"Doe",
   "password": "password123"
 }`}
                   />
@@ -302,7 +304,8 @@ export default function ApiDocsPage() {
   "success": true,
   "message": "login successfully!",
   "data": {
-    "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "auth": { ...user }
   }
 }`}
                   />

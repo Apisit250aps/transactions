@@ -26,6 +26,8 @@ Authorization: Bearer <your_jwt_token>
 {
   uuid: string,        // UUID ของผู้ใช้
   name: string,        // ชื่อผู้ใช้ (ไม่ซ้ำ)
+  first_name: string
+  last_name: string
   password: string,    // รหัสผ่าน (เข้ารหัสด้วย argon2)
   createdAt: Date,     // วันที่สร้าง
   updatedAt: Date      // วันที่อัปเดต
@@ -74,6 +76,8 @@ Authorization: Bearer <your_jwt_token>
 ```json
 {
   "name": "username",
+  "first_name":"John",
+  "last_name":"Doe",
   "password": "password123"
 }
 ```
@@ -127,7 +131,8 @@ Authorization: Bearer <your_jwt_token>
   "success": true,
   "message": "login successfully!",
   "data": {
-    "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "auth": { ...user }
   }
 }
 ```

@@ -3,10 +3,12 @@ import { v4 as uuidv4 } from 'uuid'
 import { db } from './libs/client'
 import argon2 from 'argon2'
 
-// users model 
+// users model
 export const UserSchema = z.object({
   uuid: z.uuid().default(uuidv4),
   name: z.string().min(1, 'Name is required'),
+  first_name: z.string().min(1, 'First name is required'),
+  last_name: z.string().min(1, 'Last name is required'),
   password: z
     .string()
     .min(6, 'Password must be at least 6 characters')
@@ -37,7 +39,6 @@ export const TransactionSchema = z.object({
   createdAt: z.coerce.date().default(() => new Date()),
   updatedAt: z.coerce.date().default(() => new Date()),
 })
-
 
 export const UpdateTransactionSchema = z.object({
   name: z.string().min(1, 'Name is required').optional(),

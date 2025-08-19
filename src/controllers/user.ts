@@ -1,4 +1,5 @@
 import { signToken } from '@/libs/jwt'
+import { omit } from '@/libs/utils'
 import { users, UserSchema, wallets, WalletSchema } from '@/models'
 import argon2 from 'argon2'
 import { NextRequest, NextResponse } from 'next/server'
@@ -98,12 +99,14 @@ export async function UserLogin(
     }
 
     const token = signToken({ sub: user.uuid, name: user.name })
+    const auth = omit(user, ['password', '_id'])
 
     return NextResponse.json({
       success: true,
       message: 'login successfully!',
       data: {
         access: token,
+        auth,
       },
     })
   } catch (error) {
